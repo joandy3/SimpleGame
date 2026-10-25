@@ -23,6 +23,7 @@ import os
 import random
 import time
 import tkinter as tk
+import webbrowser
 
 # ---------------------------------------------------------------- ค่าคงที่
 W, H = 800, 620
@@ -43,6 +44,9 @@ GOLD_PALETTE = ["#fff6c9", "#ffe36b", "#ffc23d", "#b8860b", "#5c430a"]
 SMOKE_PALETTE = ["#e8eef7", "#aab4c4", "#6f7a8c", "#3c4352", "#1d212b"]
 
 SAVE_PATH = os.path.join(os.path.expanduser("~"), ".space_shooter_save.json")
+
+DEVELOPER = "Pongpiya"
+REPO_URL = "https://github.com/joandy3/SimpleGame"
 
 # ---------------------------------------------------------------- ยานให้เลือก
 # รูปทรงเป็นพิกัดหน่วย (คูณด้วยขนาดยานตอนวาด)
@@ -1283,6 +1287,7 @@ class Game(object):
     # ---- ข้อความบนจอ
     def clear_overlay(self):
         self.canvas.delete("overlay")
+        self.canvas.config(cursor="")
 
     def show_overlay(self, lines):
         self.clear_overlay()
@@ -1315,7 +1320,7 @@ class Game(object):
     def draw_select(self):
         c = self.canvas
         T = "overlay"
-        c.delete(T)
+        self.clear_overlay()
         self.hitzones = []
         c.create_rectangle(0, 0, W, H, fill="#000000", stipple="gray50",
                            outline="", tags=T)
@@ -1323,6 +1328,7 @@ class Game(object):
                       font=(FONT, 28, "bold"), tags=T)
         c.create_text(W / 2, 62, text="เลือกยานและอาวุธก่อนออกรบ",
                       fill="#7ea8d8", font=(FONT_TH, 12), tags=T)
+        self.draw_credit_button(c)
 
         # แถวที่ 1: ยาน
         focus = self.sel_row == 0
@@ -1384,10 +1390,50 @@ class Game(object):
                       font=(FONT_TH, 14, "bold"), tags=T)
         self.hitzones.append((bx1, by1, bx2, by2, 2, 0))
         c.create_text(20, 606, anchor="w",
-                      text="← → เลือก     ↑ ↓ สลับแถว     คลิกการ์ดได้     Esc ออก",
+                      text="← → เลือก    ↑ ↓ สลับแถว    คลิกการ์ดได้    G เปิด GitHub    Esc ออก",
                       fill=DIM, font=(FONT_TH, 9), tags=T)
         c.create_text(W - 20, 606, anchor="e", text="HIGH SCORE %06d" % self.best,
                       fill=GOLD, font=(FONT, 10, "bold"), tags=T)
+
+    def draw_credit_button(self, c):
+        """ปุ่มเครดิตผู้พัฒนา มุมขวาบน กดแล้วเปิดหน้า GitHub"""
+        T = ("overlay", "credit")
+        right, top, pad = W - 14, 12, 8
+        t1 = c.create_text(right - pad, top + pad, anchor="ne",
+                           text="พัฒนาโดย  " + DEVELOPER, fill="#dfe8ff",
+                           font=(FONT_TH, 10, "bold"), tags=T)
+        y2 = c.bbox(t1)[3]
+        t2 = c.create_text(right - pad, y2 + 1, anchor="ne",
+                           text=REPO_URL.split("github.com/")[-1] + "  ↗",
+                           fill=CYAN, font=(FONT, 8), tags=T + ("credit_link",))
+        # ขนาดกรอบคำนวณจากข้อความจริง จึงไม่ล้นแม้จอตั้ง DPI ต่างกัน
+        x1 = min(c.bbox(t1)[0], c.bbox(t2)[0]) - pad
+        y2 = c.bbox(t2)[3] + pad - 2
+        box = c.create_rectangle(x1, top, right, y2, fill="#0b1230",
+                                 outline="#2a3a6a", width=1,
+                                 tags=T + ("credit_box",))
+        c.tag_lower(box, t1)
+        self.hitzones.append((x1, top, right, y2, 3, 0))
+        c.tag_bind("credit", "<Enter>", self.on_credit_hover)
+        c.tag_bind("credit", "<Leave>", self.on_credit_leave)
+
+    def on_credit_hover(self, ev):
+        c = self.canvas
+        c.config(cursor="hand2")
+        c.itemconfig("credit_box", outline=CYAN, fill="#13204a")
+        c.itemconfig("credit_link", fill="#ffffff")
+
+    def on_credit_leave(self, ev):
+        c = self.canvas
+        c.config(cursor="")
+        c.itemconfig("credit_box", outline="#2a3a6a", fill="#0b1230")
+        c.itemconfig("credit_link", fill=CYAN)
+
+    def open_repo(self):
+        try:
+            webbrowser.open(REPO_URL, new=2)
+        except webbrowser.Error:
+            pass
 
     def select_key(self, k):
         if k in ("left", "a"):
@@ -1405,6 +1451,9 @@ class Game(object):
             return
         elif k == "escape":
             self.root.destroy()
+            return
+        elif k == "g":
+            self.open_repo()
             return
         else:
             return
@@ -1424,6 +1473,9 @@ class Game(object):
             if x1 <= x <= x2 and y1 <= y <= y2:
                 if row == 2:
                     self.start()
+                    return
+                if row == 3:
+                    self.open_repo()
                     return
                 self.sel_row = row
                 if row == 0:
